@@ -73,7 +73,13 @@ export const POLITICA_REFERENCIA: PoliticaMoratoria = {
   base: 'ACTUAL_360',
 };
 
-/** Tramo de mora: clasificación DERIVADA, no es un estado (6.7). */
+/**
+ * Clasificación derivada del nivel de atraso de un crédito.
+ *
+ * Importante:
+ * estos valores representan un tramo calculado a partir de los
+ * días de atraso y no constituyen estados permanentes del crédito.
+ */
 export type TramoMora =
   | 'AL_DIA'
   | 'MORA_1'
@@ -83,9 +89,14 @@ export type TramoMora =
   | 'INCOBRABLE';
 
 /**
- * Clasifica según días de atraso. Pura y bidireccional: la misma función
- * sirve cuando el tramo sube (pasa el tiempo sin pago) y cuando baja
- * (un pago reduce el atraso).
+ * Determina el tramo de mora correspondiente a una cantidad
+ * determinada de días de atraso.
+ *
+ * La función es pura: no modifica información del crédito ni
+ * depende de fechas del sistema.
+ *
+ * La clasificación puede avanzar cuando aumenta el atraso o
+ * retroceder cuando un pago reduce los días pendientes.
  */
 export function clasificarTramo(diasDeAtraso: number): TramoMora {
   if (!Number.isInteger(diasDeAtraso) || diasDeAtraso < 0) {
