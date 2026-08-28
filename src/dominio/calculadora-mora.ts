@@ -49,7 +49,19 @@ const DIVISOR_BASE: Record<BaseConteo, number> = {
   '30_360': 360,
 };
 
-/** Política moratoria institucional: parámetro versionado, no constante. */
+/**
+ * Define los parámetros que intervienen en el cálculo del interés
+ * moratorio.
+ *
+ * La política se recibe desde fuera del cálculo para permitir
+ * modificar tasas o convenciones sin modificar la fórmula.
+ *
+ * tnaMoratoria:
+ *   tasa nominal anual utilizada para calcular la mora.
+ *
+ * base:
+ *   convención empleada para convertir la tasa anual a una tasa diaria.
+ */
 export interface PoliticaMoratoria {
   readonly tnaMoratoria: number | string; // ej. 0.24 = 24 % TNA moratoria
   readonly base: BaseConteo;
