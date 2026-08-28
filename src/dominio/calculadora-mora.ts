@@ -111,9 +111,18 @@ export function clasificarTramo(diasDeAtraso: number): TramoMora {
 }
 
 /**
- * Interés moratorio de UNA cuota vencida (6.5).
- * Solo sobre el capital en mora: jamás incluye el interés de la cuota
- * (anatocismo prohibido).
+ * Calcula el interés moratorio correspondiente a una cuota vencida.
+ *
+ * Fórmula aplicada:
+ *
+ *   interés moratorio =
+ *     capital en mora × (TNA moratoria / base) × días de atraso
+ *
+ * El cálculo se realiza exclusivamente sobre el capital pendiente.
+ * Los intereses corrientes de la cuota no forman parte de la base
+ * del cálculo moratorio.
+ *
+ * Si no existen días de atraso, el resultado es cero.
  */
 export function calcularInteresMoratorio(
   capitalEnMora: Dinero,
@@ -123,9 +132,15 @@ export function calcularInteresMoratorio(
   if (!Number.isInteger(diasDeAtraso) || diasDeAtraso < 0) {
     throw new Error('calcularInteresMoratorio: días de atraso inválidos');
   }
+  // Sin días de atraso no existe interés moratorio.
   if (diasDeAtraso === 0) {
     return Dinero.cero(); // sin atraso no hay penalización
   }
+
+   // 1. Aplica la tasa anual al capital en mora.
+  // 2. Convierte la tasa anual a una tasa diaria según la base elegida.
+  // 3. Multiplica por los días de atraso.
+  // 4. Redondea el resultado a centavos.
   return capitalEnMora
     .multiplicarPor(politica.tnaMoratoria)
     .dividirEntre(DIVISOR_BASE[politica.base])
