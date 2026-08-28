@@ -27,7 +27,20 @@
  */
 import { Dinero } from './dinero';
 
-/** Base de conteo de días para el moratorio (sección 6.3). */
+/**
+ * Base utilizada para convertir la tasa anual moratoria
+ * en una tasa diaria.
+ *
+ * ACTUAL_360:
+ *   utiliza los días reales transcurridos sobre una base de 360 días.
+ *
+ * ACTUAL_365:
+ *   utiliza los días reales transcurridos sobre una base de 365 días.
+ *
+ * 30_360:
+ *   utiliza la convención financiera de 30 días por mes y
+ *   360 días por año.
+ */
 export type BaseConteo = 'ACTUAL_360' | 'ACTUAL_365' | '30_360';
 
 const DIVISOR_BASE: Record<BaseConteo, number> = {
