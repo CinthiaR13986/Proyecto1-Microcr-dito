@@ -1,21 +1,29 @@
 /**
- * calculadora-mora.ts — Interés moratorio y tramos de mora.
+ * calculadora-mora.ts
  *
- * Reglas de negocio (sección 6.5):
- *  - Días de atraso: días calendario desde el vencimiento hasta el corte.
- *    Se RECIBEN como parámetro: el núcleo nunca lee la fecha del sistema
- *    (puerto Reloj, aceptación de E4).
- *  - El interés moratorio se calcula EXCLUSIVAMENTE sobre el capital en mora,
- *    NUNCA sobre intereses (prohibición de anatocismo, Código Civil,
- *    Decreto-Ley 106).
- *  - interes_moratorio = capital_en_mora × (TNA_moratoria / base) × días.
- *  - Redondeo a centavos POR CUOTA, no al final (6.2).
- *  - Tramos (clasificación derivada, reversible, 6.7):
- *    Mora 1 (1–30), Mora 2 (31–60), Mora 3 (61–90), Vencido (91–120),
- *    Incobrable (>120).
+ * Módulo encargado del cálculo de intereses moratorios y de la
+ * clasificación de los créditos según sus días de atraso.
  *
- * Diseño: la política (TNA moratoria y base de conteo) es un PARÁMETRO
- * versionado, nunca una constante del cálculo (6.1 / 6.3).
+ * Reglas de negocio:
+ *  - Los días de atraso se reciben como parámetro.
+ *  - El interés moratorio se calcula únicamente sobre el capital
+ *    pendiente en mora.
+ *  - No se aplica interés moratorio sobre intereses generados.
+ *  - El cálculo utiliza una tasa moratoria y una base de conteo
+ *    configurables.
+ *  - El resultado monetario se redondea a dos decimales por cuota.
+ *
+ * Clasificación de mora:
+ *  - 0 días: al día.
+ *  - 1 a 30 días: Mora 1.
+ *  - 31 a 60 días: Mora 2.
+ *  - 61 a 90 días: Mora 3.
+ *  - 91 a 120 días: Vencido.
+ *  - Más de 120 días: Incobrable.
+ *
+ * Diseño:
+ *  La política de cálculo se recibe como parámetro para evitar que
+ * las reglas financieras queden acopladas a valores constantes.
  */
 import { Dinero } from './dinero';
 
