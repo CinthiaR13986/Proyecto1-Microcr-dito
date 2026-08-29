@@ -50,6 +50,10 @@ describe('Plan de amortización francés (sección 6.4.1)', () => {
         });
     });
 
+    //invariantes del plan de amortizacion 
+    //conservacion capital: Σ(amortización de todas las cuotas) = Capital inicial 12,055.45 - 2,055.45 = 10,000.00
+    // saldo final cero: ultima fila debe cerrar con saldofinal = 0.00 
+    
     it('invariantes 6.10: Σ amortizaciones = P y saldo final = 0.00', () => {
         const p = planDeReferencia();
         expect(p.totalAmortizacion.aNumero()).toBe(10000);
