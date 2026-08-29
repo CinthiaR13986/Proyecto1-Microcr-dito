@@ -3,10 +3,15 @@ import { Dinero } from '../src/dominio/dinero';
 import { PlanAmortizacion, MetodoFrances } from '../src/dominio/plan-amortizacion';
 
 /**
- * ORÁCULO OBLIGATORIO (sección 6.4.1):
+ * ORACULO OBLIGATORIO :
  * P = Q10,000.00 · TNA 36 % nominal → i = 3 % mensual · n = 12 cuotas.
  * [saldoInicial, cuota, interes, amortizacion, saldoFinal]
  */
+// Plan de amortizacion frances
+//metodo: cuotas constantes de pago 
+
+
+
 const TABLA_ESPERADA: Array<[number, number, number, number, number]> = [
     [10000.0, 1004.62, 300.0, 704.62, 9295.38],
     [9295.38, 1004.62, 278.86, 725.76, 8569.62],
@@ -63,7 +68,7 @@ describe('Plan de amortización francés (sección 6.4.1)', () => {
         });
     });
 
-    it('la última cuota absorbe el ajuste de cuadre (un centavo más)', () => {
+    it('la última cuota absorbe el ajuste de cuadre (un centavo mAs)', () => {
         const filas = planDeReferencia().cuotas;
         const ultima = filas[filas.length - 1]!;
         const anterior = filas[filas.length - 2]!;
