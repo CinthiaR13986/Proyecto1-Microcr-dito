@@ -8,12 +8,17 @@ const creditVigente = (id: string) =>
     Credito.solicitar(id, F, U)
         .aplicar({ tipo: 'APROBAR' }, F, U)
         .aplicar({ tipo: 'DESEMBOLSAR' }, F, U);
+// ciclo de vida del credito 
+//maquina de estados : solicitado → aprobado → vigente
 
-describe('Ciclo de vida del crédito (sección 6.7)', () => {
+describe('Ciclo de vida del crédito ', () => {
     it('avance normal: solicitado → aprobado → vigente', () => {
         expect(creditVigente('CR-1').estadoActual).toBe('vigente');
     });
 
+    // reversibilidad: la mora es reversible bajando de tramo al pagar 
+    // nota: cada pago puede cambiar el tramo sin cambiar el estado actual 
+    
     it('REVERSIBILIDAD obligatoria: Mora 2 → Mora 1 → vigente', () => {
         let c = creditVigente('CR-2').aplicar({ tipo: 'ATRASO', dias: 45 }, F, U);
         expect(c.estadoActual).toBe('en_mora');
