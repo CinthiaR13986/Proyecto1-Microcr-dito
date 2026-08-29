@@ -10,6 +10,9 @@ const deudaReferencia = (): Rubros => ({
     capital: Dinero.de(725.76),
 });
 
+// prelacion de pagos 
+// orden de aplicacion gastos - interes moratorio-interes corriente - capital -excedente 
+
 describe('Prelación de pagos (sección 6.6)', () => {
     it('Escenario A — pago exacto Q1,011.88 salda la cuota', () => {
         const r = aplicarPago(Dinero.de(1011.88), deudaReferencia());
