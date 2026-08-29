@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { Dinero, Moneda } from '../src/dominio/dinero';
 
+//objeto valor dinero 
+// responsablidad: encapsular operaciones monetarias eliminando errores de punto
+// inmutabilidad toda operacion devuelve un nuevo dinero
+//identidad: dos dinero con mismo monto y momeda son iguales por valor
+
 describe('Objeto de Valor Dinero (sección 6.2)', () => {
     it('evita el error de punto flotante: 0.1 + 0.2 = 0.3 exacto', () => {
         const a = Dinero.de(0.1);
@@ -24,6 +29,8 @@ describe('Objeto de Valor Dinero (sección 6.2)', () => {
         expect(() => q.sumar(usd)).toThrow(/monedas distintas/i);
     });
 
+    // Redondeo: metodo (half-up) a 2 decimales 
+    //casos de prueba  1.005 -> 1.01 
     it('redondea medio hacia arriba a 2 decimales', () => {
         expect(Dinero.de(1.005).redondeado().aNumero()).toBe(1.01);
         expect(Dinero.de(2.675).redondeado().aNumero()).toBe(2.68);
