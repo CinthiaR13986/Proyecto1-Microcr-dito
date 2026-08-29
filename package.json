@@ -5,9 +5,12 @@
   "main": "src/dominio/index.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "generar": "tsx src/generar.ts",
+    "validar": "tsx src/validar.ts",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "microcredito",
@@ -21,11 +24,17 @@
   "dependencies": {
     "date-fns": "^4.4.0",
     "decimal.js": "^10.6.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "yaml": "^2.6.0"
   },
   "devDependencies": {
-    "@types/node": "^26.3.0",
+    "@types/node": "^26.2.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.10",
+    "@seriousme/openapi-schema-validator": "^2.4.0",
+    "tsx": "^4.19.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
