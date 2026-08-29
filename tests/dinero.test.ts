@@ -22,6 +22,8 @@ describe('Objeto de Valor Dinero (sección 6.2)', () => {
         expect(b.aNumero()).toBe(50);
         expect(c).not.toBe(a);
     });
+    // restriccion: solo permite operaciones entre monedas iguales 
+    // violacion lanza excpetion /monedas distintas/
 
     it('prohíbe mezclar monedas distintas', () => {
         const q = Dinero.de(10, Moneda.Quetzal);
