@@ -7,6 +7,13 @@ import {
     POLITICA_REFERENCIA,
 } from '../src/dominio/calculadora-mora';
 
+
+// Definición: Costo financiero por incumplimiento en plazo
+// Fórmula: IM = Capital_en_Mora × TNA_Moratoria × (Días_Atraso / Base)
+//POLITICA_REFERENCIA: 
+ // TNA moratoria: 24 % anual
+ // Base: 360 días(año comercial)
+
 describe('Interés moratorio (sección 6.5)', () => {
     it('reproduce el ejemplo obligatorio: Q7.26', () => {
         const capitalEnMora = Dinero.de(725.76); // amortización de la cuota 2
