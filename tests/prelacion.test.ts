@@ -25,6 +25,8 @@ describe('Prelación de pagos (sección 6.6)', () => {
         expect(r.cuotaSaldada).toBe(true);
     });
 
+
+
     it('Escenario B — pago parcial Q500: abono a capital 213.88, NO salda', () => {
         const r = aplicarPago(Dinero.de(500), deudaReferencia());
         expect(r.aplicados.interesMoratorio.aNumero()).toBe(7.26);
@@ -55,7 +57,14 @@ describe('Prelación de pagos (sección 6.6)', () => {
         expect(r.aplicados.interesCorriente.aNumero()).toBe(2.74);
         expect(r.aplicados.capital.aNumero()).toBe(0);
     });
-
+    /*
+ Ley de Conservación de Pagos:
+  PAGO RECIBIDO = APLICADOS A RUBROS + EXCEDENTE
+  Si pago > deuda total:
+  Marca cuotaSaldada = true
+  Genera excedente
+  destinoExcedente = 'A_CAPITAL'(abono futuro)
+*/
     it('Invariante de conservación: aplicados + excedente = pago recibido', () => {
         for (const monto of [500, 1011.88, 3000]) {
             const pago = Dinero.de(monto);
