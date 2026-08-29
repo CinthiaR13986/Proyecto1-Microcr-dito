@@ -6,9 +6,20 @@ import {
     type CreditoCartera,
 } from '../src/dominio/cartera';
 
+/*Modelo del dominio para analisis de caerte de riesto 
+
+    - id: Identificador de  credito
+ * - saldoCapital: Monto pendiente (Dinero value object para evitar punto flotante)
+ * - diasDeAtraso: Días desde el vencimiento (determina tramo: AL_DIA, MORA_1, MORA_2, MORA_3, VENCIDO, INCOBRABLE)
+ * - reestructurado: Flag  marca creditos que tuvieron reestructura (entran en riesgo incluso al día)
+ * - incobrable: Flag que marca creditos sin posibilidad de cobro (salen de cartera activa)
+ * 
+ * Factory cred(): Helper para crear instancias de prueba de CreditoCartera
+ */
+
 const cred = (
-    id: string,
-    saldo: number,
+    id: string, 
+    saldo: number, 
     dias: number,
     reestructurado = false,
     incobrable = false,
@@ -30,6 +41,9 @@ const carteraReferencia = (): CreditoCartera[] => [
     cred('C-006', 6000, 0, true),
     cred('C-007', 15000, 210, false, true),
 ];
+
+// valida el calculo de inidicador de cartera riesgo como porcentaje 
+// carteraEnRiesgo% = (montoEnRiesgo / carteraActiva) × 100
 
 describe('Cartera en riesgo (sección 6.8.1)', () => {
     it('reproduce el caso obligatorio: 7.00 %', () => {
