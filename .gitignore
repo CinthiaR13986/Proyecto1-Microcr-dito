@@ -1,0 +1,12 @@
+node_modules/
+
+# Estado en disco del servidor local de pruebas (no es código, se regenera).
+data/
+
+# Carpeta de referencia: es la copia literal de la entrega del Proyecto 1 desde
+# la que se importó este repositorio. Versionarla duplicaría src/ y falsearía
+# las métricas de diff del informe de impacto (Proyecto 2, sección 8.1).
+docs/Proyecto 1 - Codigo/
+
+# Cobertura de pruebas
+coverage/
