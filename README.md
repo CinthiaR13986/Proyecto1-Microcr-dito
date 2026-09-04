@@ -72,3 +72,5 @@ npm run server     # http://127.0.0.1:4000 — datos en ./data/*.csv
   omisión) y devuelve siempre lo dado por incobrable en el período junto al
   porcentaje.
 
+
+> Línea base congelada al cierre de la semana 1 — sirve de referencia para las métricas de diff que exige el enunciado del Proyecto 2 (`git diff --stat entrega-p1..HEAD -- src/dominio/`).
