@@ -5,12 +5,16 @@
  * ("excedente") se adelanta como capital a las cuotas futuras, también en
  * orden.
  *
- * Regla de mora asumida (no fijada en el contrato): interés moratorio simple
- * sobre el capital pendiente de la cuota, a la tasa anual aprobada / 360,
- * por los días transcurridos desde su vencimiento hasta la fecha de pago.
- * `gastos` no tiene política definida en el contrato: siempre Q0.00.
+ * El interés moratorio NO se calcula aquí: se delega en calculadora-mora.ts,
+ * que a su vez recibe la política moratoria inyectada. Este archivo solo sabe
+ * repartir el dinero en el orden de prelación; no conoce ninguna tasa.
+ * Los gastos de gestión de cobro (CP-02) llegan ya generados en la cuota: este
+ * archivo solo los cobra en primer lugar. Quién decide cuándo se generan y por
+ * qué monto es gasto-gestion-cobro.ts.
  */
 
+import { calcularInteresMoratorio } from "./calculadora-mora.ts";
+import type { PoliticaMoratoria } from "./politica-mora/politica-mora.ts";
 import { diasEntre } from "../util/fechas.ts";
 
 export interface CuotaMutable {
@@ -18,12 +22,19 @@ export interface CuotaMutable {
   vencimiento: string;
   capitalPendiente: number;
   interesPendiente: number;
+  /**
+   * Gastos de gestión de cobro ya generados y todavía no cobrados (CP-02).
+   * Opcional: una cuota sin gestión registrada no debe nada por este rubro, que
+   * es el caso de todas las cuotas del Proyecto 1.
+   */
+  gastosPendientes?: number;
 }
 
 export interface CuotaActualizada {
   numero: number;
   capitalPendiente: number;
   interesPendiente: number;
+  gastosPendientes: number;
   pagada: boolean;
 }
 
@@ -42,13 +53,14 @@ export function aplicarPago(
   cuotasPendientes: CuotaMutable[],
   montoPagoCent: number,
   fechaPago: string,
-  tasaAnual: number,
+  politicaMoratoria: PoliticaMoratoria,
 ): ResultadoAplicacion {
   const ordenadas = [...cuotasPendientes].sort((a, b) => a.numero - b.numero);
   const vencidas = ordenadas.filter((c) => c.vencimiento <= fechaPago);
   const futuras = ordenadas.filter((c) => c.vencimiento > fechaPago);
 
   let restante = montoPagoCent;
+  let gastos = 0;
   let interesMoratorio = 0;
   let interesCorriente = 0;
   let capital = 0;
@@ -56,7 +68,11 @@ export function aplicarPago(
 
   for (const cuota of vencidas) {
     const diasAtrasoCuota = Math.max(0, diasEntre(cuota.vencimiento, fechaPago));
-    const moraCuota = diasAtrasoCuota > 0 ? Math.round((cuota.capitalPendiente * tasaAnual * diasAtrasoCuota) / 360) : 0;
+    const moraCuota = calcularInteresMoratorio(cuota.capitalPendiente, diasAtrasoCuota, politicaMoratoria).interesMoratorioCent;
+
+    const pagoGastos = Math.min(restante, cuota.gastosPendientes ?? 0);
+    restante -= pagoGastos;
+    gastos += pagoGastos;
 
     const pagoMora = Math.min(restante, moraCuota);
     restante -= pagoMora;
@@ -72,10 +88,13 @@ export function aplicarPago(
 
     const capitalPendiente = cuota.capitalPendiente - pagoCapital;
     const interesPendiente = cuota.interesPendiente - pagoInteres;
+    const gastosPendientes = (cuota.gastosPendientes ?? 0) - pagoGastos;
     actualizacionesPorNumero.set(cuota.numero, {
       capitalPendiente,
       interesPendiente,
-      pagada: capitalPendiente < UMBRAL_CENTAVOS && interesPendiente < UMBRAL_CENTAVOS,
+      gastosPendientes,
+      pagada:
+        capitalPendiente < UMBRAL_CENTAVOS && interesPendiente < UMBRAL_CENTAVOS && gastosPendientes < UMBRAL_CENTAVOS,
     });
   }
 
@@ -91,6 +110,8 @@ export function aplicarPago(
     actualizacionesPorNumero.set(cuota.numero, {
       capitalPendiente,
       interesPendiente: cuota.interesPendiente,
+      // Una cuota futura no ha generado gestión de cobro: no hay visita que cobrar.
+      gastosPendientes: cuota.gastosPendientes ?? 0,
       pagada: capitalPendiente < UMBRAL_CENTAVOS && cuota.interesPendiente < UMBRAL_CENTAVOS,
     });
   }
@@ -100,5 +121,5 @@ export function aplicarPago(
 
   const cuotasActualizadas = ordenadas.map((c) => ({ numero: c.numero, ...actualizacionesPorNumero.get(c.numero)! }));
 
-  return { gastos: 0, interesMoratorio, interesCorriente, capital, excedente, cuotasActualizadas };
+  return { gastos, interesMoratorio, interesCorriente, capital, excedente, cuotasActualizadas };
 }
