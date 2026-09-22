@@ -6,6 +6,7 @@ import { tablaCuotas } from "../db/cuotas.ts";
 import { tablaPagos, type FilaPago } from "../db/pagos.ts";
 import { aplicarPago } from "../dominio/pagos.ts";
 import { calcularDiasAtraso, clasificarTramo } from "../dominio/mora.ts";
+import { resolverPoliticaMoratoria } from "../dominio/politica-mora/catalogo-politicas.ts";
 import { aCentavos, desdeCentavos } from "../util/dinero.ts";
 import { instanteGuatemala } from "../util/fechas.ts";
 import { buscarCreditoOFallar } from "./creditos.ts";
@@ -79,7 +80,12 @@ export function registrarRutasPagos(router: Router): void {
       interesPendiente: aCentavos(f.interesPendienteValor),
     }));
 
-    const resultado = aplicarPago(cuotasMutables, aCentavos(cuerpo.monto.valor), cuerpo.fechaPago, Number(credito.tasaAprobadaAnual));
+    // La política moratoria la decide la FECHA DE OTORGAMIENTO del crédito, no
+    // la de hoy ni la tasa ordinaria aprobada. Antes se pasaba aquí
+    // `tasaAprobadaAnual` (36 %, la tasa corriente del crédito) como si fuera
+    // la tasa moratoria: dos tasas distintas confundidas en el adaptador.
+    const politicaMoratoria = resolverPoliticaMoratoria(credito.fechaDesembolso);
+    const resultado = aplicarPago(cuotasMutables, aCentavos(cuerpo.monto.valor), cuerpo.fechaPago, politicaMoratoria);
 
     for (const actualizada of resultado.cuotasActualizadas) {
       tablaCuotas.actualizar((f) => f.creditoId === credito.creditoId && Number(f.numero) === actualizada.numero, {
