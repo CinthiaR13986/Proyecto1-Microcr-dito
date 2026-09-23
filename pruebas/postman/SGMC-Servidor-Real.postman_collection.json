@@ -1,0 +1,901 @@
+{
+  "info": {
+    "_postman_id": "a1c9d2e4-7b3f-4c5a-8e1d-9f0a1b2c3d4e",
+    "name": "SGMC · Servidor real (CSV) — flujo completo con datos ficticios",
+    "description": "Análisis de Sistemas II (037) · UMG · Proyecto 1 (E5).\n\nColección contra el SERVIDOR REAL (no Prism): cada endpoint calcula de verdad (amortización francesa, mora, prelación de pagos, cierres, cartera en riesgo) y persiste en final/data/*.csv.\n\nPuesta en marcha:\n1. cd final && npm install\n2. npm run server   (queda escuchando en http://127.0.0.1:4000)\n3. Importe esta colección y el environment «SGMC · Servidor real», selecciónelo, y ejecute con Collection Runner en orden (de arriba hacia abajo) — cada carpeta encadena variables (clienteId → solicitudId → creditoId → montos del plan → llaves de idempotencia) con la respuesta de la petición anterior, así que el orden importa.\n\nTodos los datos (nombres, montos, fechas) son ficticios, pensados para disparar el camino feliz Y los errores reales de negocio (404/409/422/400) — no son ejemplos estáticos como en la colección de Prism.\n\nSi vuelve a correr la colección completa sin reiniciar las tablas, el primer paso genera una identificación de cliente distinta cada vez (usa {{$timestamp}}) para no chocar con el 422 de identificación duplicada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:4000", "type": "string" },
+    { "key": "clienteId", "value": "", "type": "string" },
+    { "key": "solicitudId", "value": "", "type": "string" },
+    { "key": "creditoId", "value": "", "type": "string" },
+    { "key": "cuota1Monto", "value": "", "type": "string" },
+    { "key": "cuota1Vencimiento", "value": "", "type": "string" },
+    { "key": "pago1Key", "value": "", "type": "string" },
+    { "key": "pago1Id", "value": "", "type": "string" },
+    { "key": "pago2Key", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Clientes",
+      "item": [
+        {
+          "name": "201 · Registrar cliente (Ana Gabriela Pérez López)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/clientes", "host": ["{{base_url}}"], "path": ["clientes"] },
+            "description": "Alta de un cliente ficticio. La identificación incluye {{$timestamp}} para que la colección se pueda volver a correr sin chocar con el 422 de identificación duplicada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana Gabriela Pérez López\",\n  \"identificacion\": \"DPI-{{$timestamp}}\",\n  \"contacto\": {\n    \"telefono\": \"+502 5555-1234\",\n    \"email\": \"ana.perez@correo.gt\",\n    \"direccion\": \"0 avenida 0-00, zona 1, Guatemala\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('devuelve clienteId con formato CL-###', function () {",
+                  "    pm.expect(cuerpo.clienteId).to.match(/^CL-\\d{3,8}$/);",
+                  "});",
+                  "pm.collectionVariables.set('clienteId', cuerpo.clienteId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Consultar el cliente recién registrado",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/clientes/{{clienteId}}", "host": ["{{base_url}}"], "path": ["clientes", "{{clienteId}}"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('el clienteId coincide', function () {",
+                  "    pm.expect(pm.response.json().clienteId).to.eql(pm.collectionVariables.get('clienteId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 · Cliente inexistente",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/clientes/CL-999999", "host": ["{{base_url}}"], "path": ["clientes", "CL-999999"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('problema tipo cliente-no-encontrado', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('cliente-no-encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Solicitudes",
+      "item": [
+        {
+          "name": "201 · Crear solicitud (Q8,000.00 a 12 meses)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Accept", "value": "application/json", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/solicitudes", "host": ["{{base_url}}"], "path": ["solicitudes"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"montoSolicitado\": { \"valor\": \"8000.00\", \"moneda\": \"GTQ\" },\n  \"plazoMeses\": 12,\n  \"proposito\": \"Capital de trabajo para negocio de abarrotes\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('estado inicial es solicitado', function () { pm.expect(cuerpo.estado).to.eql('solicitado'); });",
+                  "pm.collectionVariables.set('solicitudId', cuerpo.solicitudId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 · Cliente referido no existe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/solicitudes", "host": ["{{base_url}}"], "path": ["solicitudes"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"CL-999999\",\n  \"montoSolicitado\": { \"valor\": \"5000.00\", \"moneda\": \"GTQ\" },\n  \"plazoMeses\": 6\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 404', function () { pm.response.to.have.status(404); });"] }
+            }
+          ]
+        },
+        {
+          "name": "422 · Monto fuera de rango del producto",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/solicitudes", "host": ["{{base_url}}"], "path": ["solicitudes"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"montoSolicitado\": { \"valor\": \"30000.00\", \"moneda\": \"GTQ\" },\n  \"plazoMeses\": 12\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('problema tipo fuera-de-rango-producto', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('fuera-de-rango-producto');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Consultar la solicitud creada",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/solicitudes/{{solicitudId}}", "host": ["{{base_url}}"], "path": ["solicitudes", "{{solicitudId}}"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('responde 200', function () { pm.response.to.have.status(200); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Aprobar solicitud (tasa 36% anual)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/solicitudes/{{solicitudId}}/aprobacion",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes", "{{solicitudId}}", "aprobacion"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tasaAprobadaAnual\": 0.36,\n  \"comentario\": \"Aprobado con tasa de referencia del Comité de Crédito\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('estado pasa a aprobado y expone creditoId', function () {",
+                  "    pm.expect(cuerpo.estado).to.eql('aprobado');",
+                  "    pm.expect(cuerpo.creditoId).to.match(/^C-\\d{3,8}$/);",
+                  "});",
+                  "pm.collectionVariables.set('creditoId', cuerpo.creditoId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 · Solicitud ya decidida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/solicitudes/{{solicitudId}}/aprobacion",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes", "{{solicitudId}}", "aprobacion"]
+            },
+            "description": "Reintenta aprobar una solicitud que en el paso anterior ya quedó aprobada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tasaAprobadaAnual\": 0.30\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('problema tipo solicitud-ya-decidida', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('solicitud-ya-decidida');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 · Solicitud inexistente (rechazo)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/solicitudes/SO-999999/rechazo", "host": ["{{base_url}}"], "path": ["solicitudes", "SO-999999", "rechazo"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Capacidad de pago insuficiente según política vigente\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 404', function () { pm.response.to.have.status(404); });"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Créditos",
+      "item": [
+        {
+          "name": "200 · Consultar crédito recién aprobado (aún sin plan)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('estado es aprobado', function () { pm.expect(pm.response.json().estado).to.eql('aprobado'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 · Plan de amortización sin desembolso",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/creditos/{{creditoId}}/plan-amortizacion",
+              "host": ["{{base_url}}"],
+              "path": ["creditos", "{{creditoId}}", "plan-amortizacion"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('problema tipo credito-sin-plan', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('credito-sin-plan');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "201 · Desembolsar crédito",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/creditos/{{creditoId}}/desembolsos",
+              "host": ["{{base_url}}"],
+              "path": ["creditos", "{{creditoId}}", "desembolsos"]
+            },
+            "description": "Fecha de desembolso en el pasado a propósito: así la cuota 1 y 2 del plan ya están vencidas cuando lleguemos a los pagos, y se puede demostrar el cálculo real de mora.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaDesembolso\": \"2026-06-15\",\n  \"cuentaDestino\": \"CTA-00981245\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('estado pasa a vigente', function () { pm.expect(pm.response.json().estado).to.eql('vigente'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 · Crédito ya desembolsado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/creditos/{{creditoId}}/desembolsos",
+              "host": ["{{base_url}}"],
+              "path": ["creditos", "{{creditoId}}", "desembolsos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaDesembolso\": \"2026-06-15\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('problema tipo estado-no-admite-desembolso', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('estado-no-admite-desembolso');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Plan de amortización (12 cuotas, método francés)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/creditos/{{creditoId}}/plan-amortizacion",
+              "host": ["{{base_url}}"],
+              "path": ["creditos", "{{creditoId}}", "plan-amortizacion"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('12 cuotas', function () { pm.expect(cuerpo.cuotas.length).to.eql(12); });",
+                  "pm.test('la última cuota deja saldo final exacto Q0.00', function () {",
+                  "    pm.expect(cuerpo.cuotas[11].saldoFinal.valor).to.eql('0.00');",
+                  "});",
+                  "pm.collectionVariables.set('cuota1Monto', cuerpo.cuotas[0].cuota.valor);",
+                  "pm.collectionVariables.set('cuota1Vencimiento', cuerpo.cuotas[0].vencimiento);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 · Crédito inexistente",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/creditos/C-999999", "host": ["{{base_url}}"], "path": ["creditos", "C-999999"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 404', function () { pm.response.to.have.status(404); });"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Pagos",
+      "item": [
+        {
+          "name": "201 · Registrar pago de la cuota 1 (a tiempo)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.set('pago1Key', pm.variables.replaceIn('{{$guid}}'));"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('reproducido es false (pago nuevo)', function () { pm.expect(cuerpo.reproducido).to.eql(false); });",
+                  "pm.test('el desglose suma exactamente el monto recibido', function () {",
+                  "    const a = cuerpo.aplicacion;",
+                  "    const suma = Number(a.gastos) + Number(a.interesMoratorio) + Number(a.interesCorriente) + Number(a.capital) + Number(a.excedente);",
+                  "    pm.expect(Math.round(suma * 100)).to.eql(Math.round(Number(cuerpo.montoRecibido.valor) * 100));",
+                  "});",
+                  "pm.collectionVariables.set('pago1Id', cuerpo.pagoId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Idempotency-Key", "value": "{{pago1Key}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}/pagos", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}", "pagos"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": { \"valor\": \"{{cuota1Monto}}\", \"moneda\": \"GTQ\" },\n  \"fechaPago\": \"{{cuota1Vencimiento}}\",\n  \"medio\": \"agente_bancario\",\n  \"referencia\": \"BOL-0001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "200 · Reintento con la misma Idempotency-Key (no cobra dos veces)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Idempotency-Key", "value": "{{pago1Key}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}/pagos", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}", "pagos"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": { \"valor\": \"{{cuota1Monto}}\", \"moneda\": \"GTQ\" },\n  \"fechaPago\": \"{{cuota1Vencimiento}}\",\n  \"medio\": \"agente_bancario\",\n  \"referencia\": \"BOL-0001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200 (no 201)', function () { pm.response.to.have.status(200); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('reproducido es true', function () { pm.expect(cuerpo.reproducido).to.eql(true); });",
+                  "pm.test('es el mismo pagoId de antes: no se generó un pago nuevo', function () {",
+                  "    pm.expect(cuerpo.pagoId).to.eql(pm.collectionVariables.get('pago1Id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "409 · Misma clave de idempotencia con contenido distinto",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Idempotency-Key", "value": "{{pago1Key}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}/pagos", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}", "pagos"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": { \"valor\": \"500.00\", \"moneda\": \"GTQ\" },\n  \"fechaPago\": \"{{cuota1Vencimiento}}\",\n  \"medio\": \"efectivo\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('problema tipo clave-idempotencia-reutilizada', function () {",
+                  "    pm.expect(pm.response.json().type).to.include('clave-idempotencia-reutilizada');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "201 · Pago de más con mora y excedente (adelanto a capital)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.set('pago2Key', pm.variables.replaceIn('{{$guid}}'));"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('el desglose suma exactamente el monto recibido', function () {",
+                  "    const a = cuerpo.aplicacion;",
+                  "    const suma = Number(a.gastos) + Number(a.interesMoratorio) + Number(a.interesCorriente) + Number(a.capital) + Number(a.excedente);",
+                  "    pm.expect(Math.round(suma * 100)).to.eql(Math.round(Number(cuerpo.montoRecibido.valor) * 100));",
+                  "});",
+                  "pm.test('hubo mora, porque la cuota 2 ya estaba vencida', function () {",
+                  "    pm.expect(Number(cuerpo.aplicacion.interesMoratorio)).to.be.above(0);",
+                  "});",
+                  "pm.test('hubo excedente, porque se pagó más de lo vencido', function () {",
+                  "    pm.expect(Number(cuerpo.aplicacion.excedente)).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Idempotency-Key", "value": "{{pago2Key}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}/pagos", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}", "pagos"] },
+            "description": "3000.00 en un momento en que solo la cuota 2 (y no más) está vencida: paga mora + interés + capital de la cuota 2, y adelanta el resto como excedente a capital de cuotas futuras.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": { \"valor\": \"3000.00\", \"moneda\": \"GTQ\" },\n  \"fechaPago\": \"2026-08-28\",\n  \"medio\": \"transferencia\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "400 · Falta la cabecera Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/creditos/{{creditoId}}/pagos", "host": ["{{base_url}}"], "path": ["creditos", "{{creditoId}}", "pagos"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": { \"valor\": \"100.00\", \"moneda\": \"GTQ\" },\n  \"fechaPago\": \"2026-08-28\",\n  \"medio\": \"efectivo\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 400', function () { pm.response.to.have.status(400); });"] }
+            }
+          ]
+        },
+        {
+          "name": "200 · Listar pagos del crédito",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/creditos/{{creditoId}}/pagos?limite=50",
+              "host": ["{{base_url}}"],
+              "path": ["creditos", "{{creditoId}}", "pagos"],
+              "query": [{ "key": "limite", "value": "50" }]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('el reintento del paso anterior no generó un pago duplicado: exactamente 2 pagos', function () {",
+                  "    pm.expect(pm.response.json().pagos.length).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 · Pagos de un crédito inexistente",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/creditos/C-999999/pagos", "host": ["{{base_url}}"], "path": ["creditos", "C-999999", "pagos"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 404', function () { pm.response.to.have.status(404); });"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Cierres",
+      "item": [
+        {
+          "name": "201 · Generar cierre diario de hoy",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/diarios", "host": ["{{base_url}}"], "path": ["cierres", "diarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaCorte\": \"2026-08-28\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('reproducido es false (primera vez)', function () { pm.expect(pm.response.json().reproducido).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Reintento del cierre diario (mismo día, no duplica)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/diarios", "host": ["{{base_url}}"], "path": ["cierres", "diarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaCorte\": \"2026-08-28\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200 (no 201)', function () { pm.response.to.have.status(200); });",
+                  "pm.test('reproducido es true', function () { pm.expect(pm.response.json().reproducido).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 · Fecha de corte futura",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/diarios", "host": ["{{base_url}}"], "path": ["cierres", "diarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaCorte\": \"2099-01-01\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 422', function () { pm.response.to.have.status(422); });"] }
+            }
+          ]
+        },
+        {
+          "name": "201 · Generar cierre mensual (julio, ya concluido)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/mensuales", "host": ["{{base_url}}"], "path": ["cierres", "mensuales"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mesCorte\": \"2026-07\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('responde 201', function () { pm.response.to.have.status(201); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "200 · Reintento del cierre mensual",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/mensuales", "host": ["{{base_url}}"], "path": ["cierres", "mensuales"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mesCorte\": \"2026-07\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200 (no 201)', function () { pm.response.to.have.status(200); });",
+                  "pm.test('reproducido es true', function () { pm.expect(pm.response.json().reproducido).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 · Mes de corte aún no concluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cierres/mensuales", "host": ["{{base_url}}"], "path": ["cierres", "mensuales"] },
+            "description": "Agosto 2026 todavía no ha terminado a la fecha en que se diseñó esta colección (28 de agosto).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mesCorte\": \"2026-08\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 422', function () { pm.response.to.have.status(422); });"] }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Cartera en riesgo",
+      "item": [
+        {
+          "name": "200 · Cartera en riesgo a la fecha de corte",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/cartera-riesgo?fechaCorte=2026-08-28&incluirReestructurados=true",
+              "host": ["{{base_url}}"],
+              "path": ["cartera-riesgo"],
+              "query": [
+                { "key": "fechaCorte", "value": "2026-08-28" },
+                { "key": "incluirReestructurados", "value": "true" }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', function () { pm.response.to.have.status(200); });",
+                  "const cuerpo = pm.response.json();",
+                  "pm.test('trae porcentajeEnRiesgo y lo dado por incobrable', function () {",
+                  "    pm.expect(cuerpo).to.have.property('porcentajeEnRiesgo');",
+                  "    pm.expect(cuerpo).to.have.property('dadoPorIncobrableEnElPeriodo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 · Falta fechaCorte",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": { "raw": "{{base_url}}/cartera-riesgo", "host": ["{{base_url}}"], "path": ["cartera-riesgo"] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 400', function () { pm.response.to.have.status(400); });"] }
+            }
+          ]
+        },
+        {
+          "name": "422 · Fecha de corte anterior a la puesta en marcha",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/problem+json", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/cartera-riesgo?fechaCorte=2024-01-01",
+              "host": ["{{base_url}}"],
+              "path": ["cartera-riesgo"],
+              "query": [{ "key": "fechaCorte", "value": "2024-01-01" }]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": ["pm.test('responde 422', function () { pm.response.to.have.status(422); });"] }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
