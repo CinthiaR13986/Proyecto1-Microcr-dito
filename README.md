@@ -192,3 +192,7 @@ Dos defectos que encontró la batería de Liskov y que se corrigieron en el dise
 ## 6. Uso de herramientas de IA
 
 Conforme al §15 del enunciado, el equipo declara en el documento final el uso de herramientas de IA como apoyo. Las decisiones de diseño, su justificación y la capacidad de explicar cualquier línea del núcleo son responsabilidad del equipo.
+
+## 7. Entrega final
+
+Fecha de entrega: viernes 25 de septiembre de 2026. Todas las metricas de E6 verdes. Los siete entregables (E1-E7) consolidados en `P2_UXUI_NoDeGrupo.pdf`.
