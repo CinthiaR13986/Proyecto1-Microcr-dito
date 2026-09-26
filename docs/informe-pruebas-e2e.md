@@ -1,7 +1,14 @@
 # Informe de pruebas end-to-end del SGMC
 
 **Sistema de Gestión de Microcrédito · Crédito Vecino, S. A.**
-Ejecutado el 25 de septiembre de 2026 · 12 flujos · 57 peticiones HTTP
+Ejecutado el 25 de septiembre de 2026
+
+| Banco de pruebas | Peticiones | Aserciones | Fallos |
+|---|---|---|---|
+| Flujos end-to-end (`pruebas/e2e/flujos.mjs`) | 57 | — | 0 |
+| Colección Postman · servidor real | 32 | 58 | **0** |
+| Colección Postman · contrato (Prism) | 35 | 80 | **0** |
+| **Total** | **124** | **138** | **0** |
 
 > Este informe documenta el ejercicio del **servidor local de pruebas**, que queda fuera del
 > alcance del Proyecto 2 (§5: *"queda fuera de esta entrega: backend, servidor HTTP, API
@@ -81,6 +88,53 @@ Todos los errores respondieron `application/problem+json` conforme a la RFC 9457
 `title`, `status`, `detail`, `instance` y `traceId`.
 
 ---
+
+## 2.bis Las colecciones de Postman
+
+El repositorio trae dos colecciones del Proyecto 1 que hasta ahora solo se habían ejecutado a mano
+desde la interfaz de Postman. Se corrieron con **newman**, que es el mismo motor en línea de
+comandos, para que el resultado quede registrado y sea reproducible.
+
+| Colección | Contra qué corre | Qué verifica | Resultado |
+|---|---|---|---|
+| `SGMC-Servidor-Real` | servidor local `:4000` | el comportamiento real del núcleo | 32 peticiones · **58/58** |
+| `SGMC-Final` | mock de Prism `:4010` | que el contrato OpenAPI sea coherente | 35 peticiones · **80/80** |
+
+```bash
+npm run server          # servidor real en :4000
+npm run test:api        # 32 peticiones, 58 aserciones
+
+npm run mock            # Prism sobre openapi.yaml en :4010
+npm run test:contrato   # 35 peticiones, 80 aserciones
+```
+
+Las dos colecciones miden cosas distintas y las dos hacen falta. La de Prism responde *"¿el
+contrato está bien escrito?"* —genera las respuestas a partir del propio `openapi.yaml`, así que
+valida el documento, no la implementación—. La del servidor real responde *"¿el sistema hace lo que
+el contrato promete?"*. Un contrato impecable con una implementación que no lo cumple pasaría la
+primera y fallaría la segunda.
+
+### Una prueba que había caducado
+
+La primera corrida dio **57 de 58**. El caso *"422 · Mes de corte aún no concluido"* enviaba
+`mesCorte: "2026-08"` esperando un rechazo, y el servidor respondía `201`.
+
+No era un defecto del servidor: **agosto de 2026 ya concluyó**. La prueba se escribió cuando
+todavía estaba en curso, y el paso del tiempo la volvió falsa. El servidor tenía razón.
+
+Se corrigió haciéndola independiente de la fecha: un script de pre-petición calcula el **mes
+siguiente al actual**, que por definición nunca ha concluido.
+
+```js
+const hoy = new Date();
+const siguiente = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() + 1, 1));
+pm.collectionVariables.set("mesNoConcluido", siguiente.toISOString().slice(0, 7));
+```
+
+Es el mismo principio que el puerto Reloj del núcleo, aplicado a las pruebas: **una prueba que pasa
+hoy y falla el mes que viene no es una prueba**. Se revisaron las otras doce fixtures con fecha de
+la colección; el resto usa fechas pasadas fijas, que no caducan, o `2099-01-01`, que ya estaba
+blindada a propósito.
 
 ## 3. Resultados que el prototipo puede usar
 

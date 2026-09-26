@@ -7,6 +7,10 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "node pruebas/e2e/flujos.mjs",
+    "test:api": "npx --yes newman run pruebas/postman/SGMC-Servidor-Real.postman_collection.json -e pruebas/postman/SGMC-Servidor-Real.postman_environment.json",
+    "test:contrato": "npx --yes newman run pruebas/postman/SGMC-Final.postman_collection.json -e pruebas/postman/SGMC-Local.postman_environment.json",
+    "mock": "npx --yes @stoplight/prism-cli mock openapi.yaml -p 4010",
     "generar": "tsx src/generar.ts",
     "validar": "tsx src/validar.ts",
     "typecheck": "tsc --noEmit",
@@ -18,8 +22,8 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
     "@seriousme/openapi-schema-validator": "^2.4.0",
+    "@types/node": "^22.10.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^5.0.1"
