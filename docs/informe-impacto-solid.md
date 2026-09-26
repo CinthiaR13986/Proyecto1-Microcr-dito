@@ -260,6 +260,24 @@ políticas distintas coexistieran**, que es justo lo que exige CP-03.
 Esta es la brecha entre el documento y el repositorio que el Proyecto 2 estaba diseñado para
 revelar. El archivo que hubo que abrir —`pagos.ts`— se abrió por esta causa.
 
+**La brecha es más amplia que la mora.** Al auditar las rutas que citan los documentos del
+Proyecto 1 aparecieron dos archivos que nunca existieron:
+
+| Documento del P1 | Archivo que cita | Estado real |
+|---|---|---|
+| `adr/ADR-001.md` · `docs/diseno-e3.md` | `puertos.ts` — puertos `Reloj`, `RepositorioCreditos`, `GeneradorIds` | no existe |
+| `docs/diseno-e3.md` (evidencia de SRP) | `prelacion-pago.ts` | no existe; la prelación vive dentro de `pagos.ts` |
+
+Lo que describen es cierto como **intención de diseño** y en parte se cumple de hecho: el núcleo no
+lee el reloj del sistema —la fecha de negocio siempre entra como parámetro— aunque no haya una
+interfaz `Reloj` declarada. Pero un ADR que nombra un archivo inexistente no es evidencia
+verificable, y el Proyecto 2 mide exactamente eso.
+
+**Estos documentos se dejan como están, a propósito.** Reescribirlos ahora para que coincidan con el
+código sería revisar retroactivamente un entregable ya calificado y ocultar justo el hallazgo que
+este informe debe reportar. La discrepancia queda declarada aquí; la corrección, si se hace,
+corresponde al Proyecto Final, donde `RepositorioCreditos` sí tendrá que existir para PostgreSQL.
+
 ### 4.2 El motor no existía como pieza propia
 
 Consecuencia de lo anterior: no había `calculadora-mora.ts` que dejar intacto. El cálculo eran tres

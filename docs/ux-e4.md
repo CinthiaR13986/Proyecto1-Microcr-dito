@@ -89,6 +89,36 @@ ya recibido.
 | Cierres | ❌ requiere conexión | Proceso de gerencia, en escritorio, con cifras congeladas |
 
 ## 4.4 Trazabilidad a decisiones del Proyecto 1
-- `api/openapi.yaml`: header `X-Idempotency-Key` obligatorio en `POST /pagos` → sostiene el reintento sin doble cobro.
-- `src/dominio/puertos.ts`: puerto `Reloj` → la fechaCorte es parámetro; por eso puede viajar con el pago y el núcleo la respeta.
+
+Cada afirmación de esta sección apunta a un archivo que existe en el repositorio y a una prueba que
+la respalda.
+
+**Clave de idempotencia** — sostiene el reintento sin doble cobro.
+
+- `src/contratos/comunes.ts:87` — esquema `IdempotencyKey` (UUID v4), con su descripción en el contrato.
+- `src/servidor/pagos.ts` — el adaptador exige la cabecera `Idempotency-Key` en `POST /creditos/{id}/pagos`,
+  reproduce el pago con `200` si la clave se repite con el mismo cuerpo y responde `409` si se
+  reutiliza con otro contenido.
+- `openapi.yaml` (raíz del repositorio) — el header queda publicado en el contrato generado desde Zod.
+- Verificado en `pruebas/postman/SGMC-Servidor-Real.postman_collection.json` y en el flujo 6 de
+  `pruebas/e2e/flujos.mjs`: tres envíos con la misma clave devuelven `201 → 200 → 200`, un solo
+  `pagoId` y el saldo sin moverse.
+
+**Puerto Reloj** — la fecha de corte es un parámetro, nunca "hoy".
+
+No existe un archivo `puertos.ts`: el puerto Reloj está realizado como **invariante del núcleo**, no
+como interfaz. Ninguna función de `src/dominio/` lee el reloj del sistema; todas reciben la fecha de
+negocio como argumento:
+
+- `src/dominio/mora.ts:25` — `calcularDiasAtraso(cuotas, fechaReferencia)`.
+- `src/dominio/pagos.ts:55` — `aplicarPago(..., fechaPago, politicaMoratoria)`.
+- `src/dominio/calculadora-mora.ts` — recibe los días de atraso ya calculados.
+
+Se puede comprobar con `grep -rE "Date\.now|new Date\(\)" src/dominio/`, que no devuelve nada, y con
+la prueba *"la fecha de referencia es un parámetro, nunca el reloj del sistema"* de
+`tests/regresion-p1.test.ts`. Los únicos usos del reloj viven en `src/util/fechas.ts`
+(`hoyGuatemala`, `instanteGuatemala`) y los consume solo el adaptador, para sellos de auditoría.
+
+Por eso el asesor puede capturar un pago el jueves sin señal y sincronizarlo el sábado: la mora se
+calcula con la fecha del cobro, no con la de la sincronización.
 - Núcleo sin `Date.now()`: el tramo depende de la fecha, así que esta decisión de experiencia **solo es viable porque el P1 ya inyectaba la fecha**.
