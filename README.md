@@ -8,7 +8,7 @@ Es el **mismo sistema y el mismo repositorio** del Proyecto 1 (regla de incremen
 |---|---|
 | **Entrega** | Proyecto 2 — UX/UI, movilidad y evolución del núcleo · 10 puntos |
 | **Fecha límite** | viernes 25 de septiembre de 2026, por Canvas |
-| **Línea base del P1** | tag `entrega-p1` → commit `c3cdd74` |
+| **Línea base del P1** | commit `87a6214` — el último del estado P1 |
 | **Stack del núcleo** | TypeScript (strict) + Vitest · sin servidor, sin base de datos, sin UI |
 
 ---
@@ -167,18 +167,29 @@ Pantallas obligatorias de E3: solicitud de crédito · detalle del crédito · r
 Se reproduce con:
 
 ```bash
-git diff --stat entrega-p1..HEAD -- src/dominio/
+git diff --stat 87a6214..HEAD -- src/dominio/
 ```
 
 ## 5. Historial de commits
 
-| Commit | Contenido |
-|---|---|
-| `c3cdd74` · tag `entrega-p1` | Línea base: la entrega del Proyecto 1, sin modificar |
-| `662b4a8` | Infraestructura de pruebas + red de regresión de los oráculos del P1 |
-| `bb1aec4` | CP-01 + CP-03: política de mora como Strategy inyectada |
-| `358d993` | Informe de impacto SOLID + ADR-004 |
-| `79bd559` | CP-02 + CP-04: gasto de gestión, estados, devengo y cartera por tramo |
+| Fecha | Commit | Contenido |
+|---|---|---|
+| — | `87a6214` | **Línea base**: la entrega del Proyecto 1, sin modificar |
+| 07-sep | `3eb06c0` | Red de regresión con los 21 oráculos del P1 + infra Vitest |
+| 08→10-sep | `1c32d25` … `b89ce82` | CP-01 + CP-03: política como Strategy inyectada; se extrae el motor |
+| 11-sep | `3d6c999` · `7d1a698` | Batería M-1 a M-4 e invariantes · contrato de Liskov × 3 políticas |
+| 14-sep | `b478b0c` · `ea00710` | CP-02: gasto de gestión idempotente · caso M-5 |
+| 16→17-sep | `71c981a` · `ddefbad` | CP-04.1 máquina de estados · CP-04.2 suspensión del devengo |
+| 18-sep | `29a7378` · `518aca2` | CP-04.3 cartera por tramo + oráculo de §7.8 |
+| 21-sep | `a012213` · `a233673` | Informe de impacto SOLID · ADR-004 |
+| 22-sep | `8c693be` | Corrección del hallazgo H-2 en el adaptador (tasa moratoria) |
+| 25-sep | `dd1f133` | Cierre de la entrega |
+
+La red de regresión (07-sep) es **anterior** a todo cambio del núcleo (08-sep en adelante). Se puede verificar con:
+
+```bash
+git log --date=short --format="%ad %h %s" 87a6214..HEAD --no-merges | sort | head -3
+```
 
 Medición final del núcleo — **12 archivos creados, 1 modificado** (`dominio/pagos.ts`: deja de calcular la mora y cobra los gastos como primer eslabón). Las 21 pruebas del P1 siguen pasando; se adaptó **un** punto de llamada, sin tocar un solo valor esperado.
 

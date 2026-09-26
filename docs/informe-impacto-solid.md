@@ -14,25 +14,27 @@ Entregable E6 · Cambio de requisito: política de mora escalonada
 
 | Hito | Referencia |
 |---|---|
-| Commit de entrega del **Proyecto 1** | `c3cdd745cd52c616c6c83f1928f30b9bf53f8aaf` · tag **`entrega-p1`** |
-| Commit de entrega del **Proyecto 2** | `79bd559` *(último commit de código del núcleo; los commits posteriores son documentación)* |
+| Línea base del **Proyecto 1** | `87a621431766dd9d2ca15812407f6baf1b219e8c` — *docs: nota de línea base P1 en README* |
+| Último commit de código del **núcleo** | `29a7378` — *CP-04.3 cartera-por-tramo desde el núcleo* |
+| Commit de cierre del **Proyecto 2** | `dd1f133e42e0be19ee590fa178348ccbc433f28c` |
 
 Toda la medición de este informe se reproduce con:
 
 ```bash
-git diff --stat entrega-p1..HEAD -- src/dominio/
+git diff --stat 87a6214..HEAD -- src/dominio/
 ```
 
 ### Nota sobre la línea base
 
-El `.gitignore` de la entrega del Proyecto 1 excluía `src/dominio/`, `src/db/`, `src/servidor/` y
-`src/util/`, porque el entregable E5 era únicamente el contrato de API. El núcleo existía en disco
-pero no estaba versionado.
+El repositorio del Proyecto 2 se construyó importando la entrega del Proyecto 1 y commiteándola
+antes de tocar nada. El commit `87a6214` es el último del estado P1: a partir de ahí, todo lo que
+aparece en el diff es trabajo del Proyecto 2.
 
-Para que la métrica de este informe sea real, el núcleo se versionó **desde el commit de línea
-base**, sin modificar una sola línea de su código. Si no se hubiera hecho así, cada archivo
-evolucionado aparecería en el diff como archivo *nuevo* y la métrica de "archivos modificados"
-habría dado cero por un artefacto del control de versiones, no por calidad del diseño.
+El núcleo (`src/dominio/`) está versionado **desde la línea base** —`amortizacion.ts`, `cartera.ts`,
+`mora.ts` y `pagos.ts` ya están en `87a6214`— y eso es lo que hace real la métrica de archivos
+modificados. Si el núcleo hubiera entrado al repositorio junto con los cambios del P2, cada archivo
+evolucionado aparecería en el diff como archivo *nuevo* y la métrica habría dado cero por un
+artefacto del control de versiones, no por calidad del diseño.
 
 ### Nota sobre las pruebas del Proyecto 1
 
@@ -40,10 +42,19 @@ habría dado cero por un artefacto del control de versiones, no por calidad del 
 ajuste de Q1,004.63, los Q7.26 de mora a 15 días— vivían en el documento de arquitectura, no en el
 repositorio.
 
-Por eso el primer commit del Proyecto 2 (`662b4a8`) no evoluciona nada: escribe
+Por eso el primer commit del Proyecto 2 no evoluciona nada: `3eb06c0` (**7 de septiembre**) escribe
 `tests/regresion-p1.test.ts`, 21 pruebas que fijan esos oráculos **contra el núcleo del P1 sin
-modificar**, y las deja en verde. Recién con esa red puesta se tocó el núcleo. El orden importa:
-una suite de regresión escrita después del cambio no prueba nada.
+modificar**, y las deja en verde. El primer cambio del núcleo es `1c32d25`, del **8 de septiembre**.
+
+El orden importa y es verificable en el historial: una suite de regresión escrita después del
+cambio no prueba nada, porque se escribe mirando el resultado que ya salió.
+
+```bash
+git log --date=short --format="%ad %h %s" 87a6214..HEAD --no-merges | sort | head -3
+# 2026-09-07 3eb06c0 test: red de regresion con los 21 oraculos del P1 + infra Vitest
+# 2026-09-08 049fab7 feat(dominio): politica plana 24% (equivalencia con el motor del P1)
+# 2026-09-08 1c32d25 feat(dominio): interfaz PoliticaMoratoria (puerto, se inyecta)
+```
 
 ---
 
@@ -58,7 +69,7 @@ una suite de regresión escrita después del cambio no prueba nada.
 | Pruebas del P1 que hubo que reescribir | **0 valores esperados** · 1 punto de llamada adaptado | 0 ⚠️ |
 | Líneas netas añadidas al núcleo | **+853 / −8** (423 de código, 342 de documentación, 88 en blanco) | 60–120 orientativo |
 
-### `git diff --stat entrega-p1..HEAD -- src/dominio/`
+### `git diff --stat 87a6214..HEAD -- src/dominio/`
 
 ```
  src/dominio/calculadora-mora.ts                   |  81 +++++++++++
