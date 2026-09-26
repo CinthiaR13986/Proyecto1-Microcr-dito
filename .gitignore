@@ -10,3 +10,6 @@ docs/Proyecto 1 - Codigo/
 
 # Cobertura de pruebas
 coverage/
+
+# Salida generada por el banco de flujos e2e (cambia en cada corrida).
+pruebas/e2e/registro.json
