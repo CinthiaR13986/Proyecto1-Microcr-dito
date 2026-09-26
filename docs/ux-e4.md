@@ -106,7 +106,8 @@ la respalda.
 
 **Puerto Reloj** — la fecha de corte es un parámetro, nunca "hoy".
 
-No existe un archivo `puertos.ts`: el puerto Reloj está realizado como **invariante del núcleo**, no
+En esta rama no hay archivo `puertos.ts` —sí lo hay en la rama `main` del equipo, con la interfaz
+`Reloj` declarada—. Aquí el puerto Reloj está realizado como **invariante del núcleo**, no
 como interfaz. Ninguna función de `src/dominio/` lee el reloj del sistema; todas reciben la fecha de
 negocio como argumento:
 

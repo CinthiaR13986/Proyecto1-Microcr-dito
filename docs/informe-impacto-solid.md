@@ -261,22 +261,26 @@ Esta es la brecha entre el documento y el repositorio que el Proyecto 2 estaba d
 revelar. El archivo que hubo que abrir —`pagos.ts`— se abrió por esta causa.
 
 **La brecha es más amplia que la mora.** Al auditar las rutas que citan los documentos del
-Proyecto 1 aparecieron dos archivos que nunca existieron:
+Proyecto 1 aparecieron dos archivos que **no están presentes en esta rama**:
 
-| Documento del P1 | Archivo que cita | Estado real |
+| Documento del P1 | Archivo que cita | Estado en esta rama |
 |---|---|---|
-| `adr/ADR-001.md` · `docs/diseno-e3.md` | `puertos.ts` — puertos `Reloj`, `RepositorioCreditos`, `GeneradorIds` | no existe |
-| `docs/diseno-e3.md` (evidencia de SRP) | `prelacion-pago.ts` | no existe; la prelación vive dentro de `pagos.ts` |
+| `adr/ADR-001.md` · `docs/diseno-e3.md` | `puertos.ts` — puertos `Reloj`, `RepositorioCreditos`, `GeneradorIds` | ausente |
+| `docs/diseno-e3.md` (evidencia de SRP) | `prelacion-pago.ts` | ausente; la prelación vive dentro de `pagos.ts` |
 
-Lo que describen es cierto como **intención de diseño** y en parte se cumple de hecho: el núcleo no
-lee el reloj del sistema —la fecha de negocio siempre entra como parámetro— aunque no haya una
-interfaz `Reloj` declarada. Pero un ADR que nombra un archivo inexistente no es evidencia
-verificable, y el Proyecto 2 mide exactamente eso.
+**Importante, para no sacar la conclusión equivocada:** ambos archivos **sí existen** en la rama
+`main` del repositorio del equipo, con el puerto `Reloj` declarado como interfaz. Lo que hay aquí no
+es un diseño que se prometió y no se construyó, sino **dos linajes distintos del mismo proyecto**:
+esta rama se reconstruyó desde la entrega del P1 y no incorporó esos archivos.
 
-**Estos documentos se dejan como están, a propósito.** Reescribirlos ahora para que coincidan con el
-código sería revisar retroactivamente un entregable ya calificado y ocultar justo el hallazgo que
-este informe debe reportar. La discrepancia queda declarada aquí; la corrección, si se hace,
-corresponde al Proyecto Final, donde `RepositorioCreditos` sí tendrá que existir para PostgreSQL.
+La conclusión válida es más modesta que la inicial: en esta rama, el puerto Reloj está realizado
+como invariante —ninguna función de `src/dominio/` lee el reloj del sistema, y la fecha de negocio
+siempre entra como parámetro— y no como interfaz declarada. El resultado observable es el mismo; la
+forma, no.
+
+**Los documentos del P1 se dejan como están, a propósito.** Reescribirlos para que coincidan con el
+código de esta rama sería revisar retroactivamente un entregable ya calificado. La discrepancia
+queda declarada aquí, que es donde corresponde.
 
 ### 4.2 El motor no existía como pieza propia
 
